@@ -1,0 +1,274 @@
+// Prisma Schema cho Hệ Thống Quản Lý Thú Cưng Và Lịch Chăm Sóc Có Tích Hợp AI (PetCare AI)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Species {
+  DOG
+  CAT
+  OTHER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum HealthStatus {
+  HEALTHY
+  SICK
+  RECOVERING
+  CHRONIC
+  UNKNOWN
+}
+
+enum VaccinationStatus {
+  COMPLETED
+  UPCOMING
+  OVERDUE
+}
+
+enum MedicationStatus {
+  ACTIVE
+  EXPIRING_SOON
+  COMPLETED
+}
+
+enum CareType {
+  FEEDING
+  MEDICATION
+  BATHING
+  GROOMING
+  NAIL_TRIMMING
+  WALKING
+  CLEANING
+  VET_VISIT
+  VACCINATION
+  OTHER
+}
+
+enum RepeatType {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum ScheduleStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum Mood {
+  HAPPY
+  ENERGETIC
+  TIRED
+  ANXIOUS
+  SICK
+}
+
+enum NotificationType {
+  MEDICATION
+  VACCINATION
+  SCHEDULE
+  HEALTH_ALERT
+  SYSTEM
+}
+
+enum AIRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model User {
+  id              String           @id @default(uuid())
+  email           String           @unique
+  password        String
+  name            String
+  avatar          String?          @default("")
+  role            Role             @default(USER)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  pets            Pet[]
+  notifications   Notification[]
+  aiConversations AIConversation[]
+
+  @@map("users")
+}
+
+model Pet {
+  id            String         @id @default(uuid())
+  name          String
+  species       Species        @default(DOG)
+  breed         String
+  gender        Gender         @default(UNKNOWN)
+  birthDate     DateTime?
+  age           Int?           @default(0)
+  weight        Float?         @default(0.0)
+  color         String?
+  avatar        String?
+  microchipId   String?
+  healthStatus  HealthStatus   @default(HEALTHY)
+  notes         String?
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  healthRecords HealthRecord[]
+  vaccinations  Vaccination[]
+  medications   Medication[]
+  careSchedules CareSchedule[]
+  diaries       Diary[]
+  aiConversations AIConversation[]
+
+  @@map("pets")
+}
+
+model HealthRecord {
+  id           String       @id @default(uuid())
+  petId        String
+  pet          Pet          @relation(fields: [petId], references: [id], onDelete: Cascade)
+  date         DateTime     @default(now())
+  weight       Float?
+  temperature  Float?
+  symptoms     String?
+  diagnosis    String
+  treatment    String?
+  clinicName   String?
+  veterinarian String?
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@map("health_records")
+}
+
+model Vaccination {
+  id               String            @id @default(uuid())
+  petId            String
+  pet              Pet               @relation(fields: [petId], references: [id], onDelete: Cascade)
+  vaccineName      String
+  administeredDate DateTime
+  expirationDate   DateTime?
+  nextDueDate      DateTime?
+  clinicName       String?
+  veterinarian     String?
+  status           VaccinationStatus @default(UPCOMING)
+  notes            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@map("vaccinations")
+}
+
+model Medication {
+  id           String           @id @default(uuid())
+  petId        String
+  pet          Pet              @relation(fields: [petId], references: [id], onDelete: Cascade)
+  name         String
+  dosage       String
+  unit         String
+  frequency    String
+  startDate    DateTime
+  endDate      DateTime?
+  instructions String?
+  prescribedBy String?
+  status       MedicationStatus @default(ACTIVE)
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@map("medications")
+}
+
+model CareSchedule {
+  id            String         @id @default(uuid())
+  petId         String
+  pet           Pet            @relation(fields: [petId], references: [id], onDelete: Cascade)
+  title         String
+  careType      CareType       @default(OTHER)
+  scheduledDate DateTime
+  scheduledTime String?
+  repeat        RepeatType     @default(NONE)
+  status        ScheduleStatus @default(PENDING)
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("care_schedules")
+}
+
+model Diary {
+  id        String   @id @default(uuid())
+  petId     String
+  pet       Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  date      DateTime @default(now())
+  title     String
+  content   String
+  mood      Mood     @default(HAPPY)
+  activity  String?
+  weight    Float?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("diaries")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      NotificationType @default(SYSTEM)
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("notifications")
+}
+
+model AIConversation {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petId     String?
+  pet       Pet?        @relation(fields: [petId], references: [id], onDelete: SetNull)
+  title     String      @default("Cuộc trò chuyện mới")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  messages  AIMessage[]
+
+  @@map("ai_conversations")
+}
+
+model AIMessage {
+  id             String         @id @default(uuid())
+  conversationId String
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           AIRole         @default(USER)
+  content        String
+  createdAt      DateTime       @default(now())
+
+  @@map("ai_messages")
+}
